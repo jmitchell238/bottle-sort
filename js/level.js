@@ -240,41 +240,42 @@ function hitTestBottle(layout, x, y, opts = {}) {
  * Returns array of { x, y, w, h, cx, bottom }.
  */
 function layoutBottles(count, stageW, stageH) {
-  // Responsive grid: prefer single row until ~7, then wrap
+  // Prefer 2 rows once we have 6+ bottles (classic water-sort look).
+  // 3 rows only for very large boards.
   let cols = count;
   let rows = 1;
-  if (count > 7) {
-    cols = Math.ceil(count / 2);
+  if (count >= 6) {
     rows = 2;
+    cols = Math.ceil(count / 2);
   }
-  if (count > 12) {
-    cols = Math.ceil(count / 3);
+  if (count >= 13) {
     rows = 3;
+    cols = Math.ceil(count / 3);
   }
 
-  const padX = 14;
-  const topHud = 100;
-  const botPad = 90;
+  const padX = 12;
+  const topHud = 96;
+  const botPad = 86;
   const areaW = stageW - padX * 2;
   const areaH = stageH - topHud - botPad;
 
-  const gapX = 8;
-  const gapY = 18;
+  const gapX = Math.max(6, 10 - Math.floor(count / 4));
+  const gapY = 16;
   const cellW = (areaW - gapX * (cols - 1)) / cols;
   const cellH = (areaH - gapY * (rows - 1)) / rows;
 
-  // Bottle aspect: tall glass
-  const maxBottleW = Math.min(64, cellW * 0.92);
-  const maxBottleH = Math.min(220, cellH * 0.95);
-  // Prefer taller: height ~ 2.8 * width for classic look
+  // Bottle aspect: tall glass — a bit roomier on 2-row boards
+  const maxBottleW = Math.min(rows >= 2 ? 58 : 64, cellW * 0.9);
+  const maxBottleH = Math.min(rows >= 2 ? 200 : 230, cellH * 0.96);
+  // Prefer taller: height ~ 2.75 * width
   let bw = maxBottleW;
-  let bh = bw * 2.85;
+  let bh = bw * 2.75;
   if (bh > maxBottleH) {
     bh = maxBottleH;
-    bw = bh / 2.85;
+    bw = bh / 2.75;
   }
-  bw = Math.max(28, bw);
-  bh = Math.max(80, bh);
+  bw = Math.max(26, bw);
+  bh = Math.max(76, bh);
 
   const totalGridW = cols * cellW + (cols - 1) * gapX;
   const totalGridH = rows * cellH + (rows - 1) * gapY;

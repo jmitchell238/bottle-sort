@@ -57,3 +57,12 @@ function sfxClick() {
 function sfxUndo() {
   beep({ freq: 360, dur: 0.06, type: 'triangle', gain: 0.03, slide: -50 });
 }
+
+function sfxComplete() {
+  beep({ freq: 520, dur: 0.08, type: 'sine', gain: 0.04, slide: 100 });
+  setTimeout(() => beep({ freq: 720, dur: 0.1, type: 'triangle', gain: 0.035 }), 60);
+}
+
+function sfxSplash() {
+  beep({ freq: 200, dur: 0.05, type: 'triangle', gain: 0.025, slide: 40 });
+}

@@ -58,19 +58,35 @@ function frame(now) {
 
   if (state === 'play') {
     updatePlay(dt);
-  } else if (state === 'win' && winFlash > 0) {
-    winFlash = Math.max(0, winFlash - dt);
+  } else if (state === 'win') {
+    if (winFlash > 0) winFlash = Math.max(0, winFlash - dt);
+    if (screenShake > 0) screenShake = Math.max(0, screenShake - dt);
+    if (typeof updateParticles === 'function') updateParticles(dt);
   }
+
+  // screen shake for pour / complete / win
+  const shake = (typeof getShakeOffset === 'function') ? getShakeOffset() : { x: 0, y: 0 };
+
+  ctx.save();
+  if (shake.x || shake.y) ctx.translate(shake.x, shake.y);
 
   drawBackground(ctx);
 
   if (state === 'play' || state === 'win') {
     drawAllBottles(ctx);
+    if (typeof drawParticles === 'function') drawParticles(ctx);
     drawHud(ctx, level, moves);
+    if (typeof drawColorFlash === 'function') drawColorFlash(ctx);
     if (state === 'win') drawWinOverlayFlash(ctx);
   } else {
     drawIdleDecor(ctx, now);
+    // subtle ambient on menu too
+    if (typeof ensureAmbientMotes === 'function') ensureAmbientMotes(8);
+    if (typeof updateParticles === 'function') updateParticles(dt);
+    if (typeof drawParticles === 'function') drawParticles(ctx);
   }
+
+  ctx.restore();
 
   requestAnimationFrame(frame);
 }

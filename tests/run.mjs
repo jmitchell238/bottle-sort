@@ -47,6 +47,7 @@ function loadGame() {
     'js/config.js',
     'js/save.js',
     'js/audio.js',
+    'js/particles.js',
     'js/level.js',
     'js/game.js',
   ];
@@ -76,6 +77,10 @@ function loadGame() {
       pourAnim: () => pourAnim,
       startLevel, restartLevel, tryUndo, tapBottle, snapshotBoard,
       save, loadSave, defaultSave, recordLevelWin, persist, SAVE_KEY,
+      particles: () => (typeof particles !== 'undefined' ? particles : []),
+      clearParticles: typeof clearParticles === 'function' ? clearParticles : null,
+      spawnSparks: typeof spawnSparks === 'function' ? spawnSparks : null,
+      spawnConfetti: typeof spawnConfetti === 'function' ? spawnConfetti : null,
     };
   `;
 
@@ -136,6 +141,7 @@ section('version / SW cache sync');
   assert(sw.includes(`bottle-sort-${ver}`), `sw CACHE matches bottle-sort-${ver}`);
   assert(sw.includes("'./js/level.js'"), 'sw precaches level.js');
   assert(sw.includes("'./js/game.js'"), 'sw precaches game.js');
+  assert(sw.includes("'./js/particles.js'"), 'sw precaches particles.js');
 }
 
 // -------------------- pure rules --------------------
@@ -173,13 +179,21 @@ section('level generation');
 {
   const T = loadGame();
   const s1 = T.levelSpec(1);
-  assertEq(s1.colorCount, 3, 'level 1 has 3 colors');
-  assertEq(s1.bottleCount, 5, 'level 1 has 5 bottles (3+2)');
+  assertEq(s1.colorCount, 4, 'level 1 has 4 colors');
+  assertEq(s1.bottleCount, 6, 'level 1 has 6 bottles (4+2)');
   assertEq(s1.capacity, 4, 'capacity 4');
 
   const s5 = T.levelSpec(5);
-  assert(s5.colorCount >= 4, 'level 5 has more colors');
+  assert(s5.colorCount >= 7, 'level 5 has more colors');
   assert(s5.bottleCount === s5.colorCount + s5.emptyCount, 'bottles = colors + empty');
+  assert(s5.bottleCount >= 6, 'level 5 is 2-row size');
+
+  // 2-row layout for 6+ bottles
+  const lay6 = T.layoutBottles(6, 390, 700);
+  assertEq(lay6.length, 6, 'layout 6 bottles');
+  // two distinct y rows
+  const ys = [...new Set(lay6.map(r => Math.round(r.y)))];
+  assert(ys.length >= 2, '6 bottles use 2 rows');
 
   // deterministic RNG
   let seed = 42;
@@ -189,7 +203,7 @@ section('level generation');
   };
 
   const gen = T.generateLevel(1, rng);
-  assertEq(gen.bottles.length, 5, 'generated 5 bottles');
+  assertEq(gen.bottles.length, 6, 'generated 6 bottles');
   assertEq(gen.capacity, 4, 'gen capacity');
 
   // color counts exact
@@ -211,8 +225,8 @@ section('level generation');
   assert(unsolved, 'scrambled level is not solved');
 
   // layout
-  const lay = T.layoutBottles(5, 390, 700);
-  assertEq(lay.length, 5, 'layout 5 bottles');
+  const lay = T.layoutBottles(6, 390, 700);
+  assertEq(lay.length, 6, 'layout 6 bottles (hit tests)');
   assert(lay[0].w > 20 && lay[0].h > 50, 'bottle rect size');
   const hit = T.hitTestBottle(lay, lay[2].cx, lay[2].y + lay[2].h / 2);
   assertEq(hit, 2, 'hit test middle bottle');
@@ -220,6 +234,22 @@ section('level generation');
   // padded hit box still finds the bottle near the edge
   const near = T.hitTestBottle(lay, lay[0].x - 8, lay[0].y + lay[0].h / 2, { padX: 16, padY: 16 });
   assertEq(near, 0, 'padded hit finds bottle 0');
+}
+
+section('particles');
+{
+  const T = loadGame();
+  assert(!!T.spawnSparks, 'spawnSparks exported');
+  assert(!!T.clearParticles, 'clearParticles exported');
+  T.clearParticles();
+  T.spawnSparks(100, 100, 0, 5);
+  assert(T.particles().length >= 5, 'sparks spawn');
+  if (T.spawnConfetti) {
+    T.spawnConfetti(10);
+    assert(T.particles().length >= 15, 'confetti spawns');
+  }
+  T.startLevel(1);
+  assert(T.bottles().length >= 6, 'startLevel builds denser board');
 }
 
 // -------------------- game flow --------------------

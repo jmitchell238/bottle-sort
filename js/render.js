@@ -311,7 +311,7 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
  * Draw a single glass bottle with stacked neon liquid.
  */
 function drawBottle(ctx, bottle, rect, opts = {}) {
-  const { selected = false, lift = 0, hideTop = 0 } = opts;
+  const { selected = false, lift = 0, hideTop = 0, completeBoost = 0 } = opts;
   const cap = capacity || CAPACITY;
   const g = bottleGeom(rect, lift);
 
@@ -323,6 +323,20 @@ function drawBottle(ctx, bottle, rect, opts = {}) {
     ctx.shadowBlur = 20 + pulse * 12;
     ctx.strokeStyle = `rgba(61,231,255,${0.55 + pulse * 0.4})`;
     ctx.lineWidth = 3.5;
+    pathBottleOuter(ctx, g);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // just-completed pulse halo
+  if (completeBoost > 0 && bottle.length === cap) {
+    const def = COLORS[bottle[0]] || COLORS[0];
+    const t = Math.min(1, completeBoost / 0.7);
+    ctx.save();
+    ctx.shadowColor = def.glow;
+    ctx.shadowBlur = 18 + 24 * t;
+    ctx.strokeStyle = hexAlpha(def.glow, 0.35 + 0.55 * t);
+    ctx.lineWidth = 2 + 3 * t;
     pathBottleOuter(ctx, g);
     ctx.stroke();
     ctx.restore();
@@ -479,9 +493,12 @@ function drawAllBottles(ctx) {
     if (pourAnim && pourAnim.from === i) {
       lift = 18 * (1 - Math.min(1, pourAnim.t / pourAnim.duration));
     }
+    // complete-pulse scales the glow
+    const pulse = (typeof completePulse !== 'undefined' && completePulse[i]) || 0;
     drawBottle(ctx, bottles[i], rect, {
       selected: selected === i,
       lift,
+      completeBoost: pulse,
     });
   }
   if (pourAnim) drawPourStream(ctx, pourAnim, layout);
@@ -510,5 +527,14 @@ function drawWinOverlayFlash(ctx) {
   if (winFlash <= 0) return;
   const a = Math.min(0.35, winFlash * 0.25);
   ctx.fillStyle = `rgba(125,255,180,${a})`;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawColorFlash(ctx) {
+  if (!flashColor || flashColor.life <= 0) return;
+  const def = COLORS[flashColor.colorId] || COLORS[0];
+  const a = Math.min(0.28, (flashColor.life / flashColor.maxLife) * 0.28);
+  // parse glow to rgb-ish via canvas-friendly hex+alpha helper
+  ctx.fillStyle = hexAlpha(def.glow, a);
   ctx.fillRect(0, 0, W, H);
 }
