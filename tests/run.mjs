@@ -355,19 +355,28 @@ section('distinct palette');
 {
   const T = loadGame();
   assertEq(T.COLORS.length, 12, '12 colors');
-  // Every color must declare a mark style (0–5)
+  const shapes = new Set();
   for (const c of T.COLORS) {
     assert(c.color && c.glow && c.label, `color ${c.id} has color/glow/label`);
-    assert(c.mark >= 0 && c.mark <= 5, `color ${c.id} has mark 0-5`);
+    assert(!!c.shape, `color ${c.id} has kid shape`);
+    assert(!!c.outline, `color ${c.id} has outline`);
+    shapes.add(c.shape);
   }
+  // Unique shapes so kids can match by shape when color is confusing
+  assertEq(shapes.size, T.COLORS.length, 'each color has a unique shape');
   // No duplicate hex fills
   const fills = T.COLORS.map(c => c.color.toLowerCase());
   assertEq(new Set(fills).size, fills.length, 'unique fill hexes');
-  // Rough hue spread: first 6 should be classic primary set
+  // Early unlocks = crayon primaries
   assert(T.COLORS[0].label === 'Red', 'id0 Red');
   assert(T.COLORS[1].label === 'Blue', 'id1 Blue');
   assert(T.COLORS[2].label === 'Green', 'id2 Green');
   assert(T.COLORS[3].label === 'Yellow', 'id3 Yellow');
+  // No lime/sky/indigo near-duplicates
+  const labels = T.COLORS.map(c => c.label);
+  assert(!labels.includes('Lime'), 'no lime (confuses with green)');
+  assert(!labels.includes('Sky'), 'no sky (confuses with blue)');
+  assert(!labels.includes('Indigo'), 'no indigo (confuses with purple/blue)');
 }
 
 // summary

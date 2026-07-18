@@ -206,89 +206,128 @@ function pathBottleInner(ctx, g) {
 }
 
 /**
- * Subtle pattern unique to each color family so liquids stay distinguishable.
- * Drawn inside the already-filled unit (caller has filled the capsule).
+ * Big preschool shape badge in the middle of a liquid unit.
+ * Kids recognize circle/square/star better than tiny texture marks.
  */
-function drawColorMark(ctx, mark, x, y, w, h) {
-  if (!mark) return; // solid — no extra pattern
+function drawColorShape(ctx, shape, cx, cy, size, outlineHex) {
+  const s = size;
   ctx.save();
+  ctx.translate(cx, cy);
+
+  // soft dark disc behind the badge so it pops on any liquid color
   ctx.beginPath();
-  ctx.rect(x + 1, y + 1, w - 2, h - 2);
-  ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.lineWidth = 1.2;
+  ctx.arc(0, 0, s * 0.72, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fill();
 
-  if (mark === 1) {
-    // dots
-    const step = Math.max(5, Math.min(8, w * 0.28));
-    for (let py = y + step * 0.55; py < y + h - 2; py += step) {
-      for (let px = x + step * 0.55; px < x + w - 2; px += step) {
-        ctx.beginPath();
-        ctx.arc(px, py, 1.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = outlineHex || '#111111';
+  ctx.lineWidth = Math.max(1.6, s * 0.12);
+
+  ctx.beginPath();
+  if (shape === 'circle') {
+    ctx.arc(0, 0, s * 0.42, 0, Math.PI * 2);
+  } else if (shape === 'square') {
+    const r = s * 0.38;
+    ctx.rect(-r, -r, r * 2, r * 2);
+  } else if (shape === 'triangle') {
+    const r = s * 0.48;
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.9, r * 0.75);
+    ctx.lineTo(-r * 0.9, r * 0.75);
+    ctx.closePath();
+  } else if (shape === 'star') {
+    const spikes = 5;
+    const outer = s * 0.48;
+    const inner = s * 0.22;
+    for (let i = 0; i < spikes * 2; i++) {
+      const rad = (i % 2 === 0) ? outer : inner;
+      const a = -Math.PI / 2 + (i * Math.PI) / spikes;
+      const px = Math.cos(a) * rad;
+      const py = Math.sin(a) * rad;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
-  } else if (mark === 2) {
-    // diagonal stripes
+    ctx.closePath();
+  } else if (shape === 'heart') {
+    const r = s * 0.22;
+    ctx.moveTo(0, r * 1.4);
+    ctx.bezierCurveTo(r * 2.2, r * 0.2, r * 1.6, -r * 1.4, 0, -r * 0.5);
+    ctx.bezierCurveTo(-r * 1.6, -r * 1.4, -r * 2.2, r * 0.2, 0, r * 1.4);
+    ctx.closePath();
+  } else if (shape === 'diamond') {
+    const r = s * 0.45;
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.75, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r * 0.75, 0);
+    ctx.closePath();
+  } else if (shape === 'plus') {
+    const a = s * 0.16;
+    const b = s * 0.45;
+    ctx.moveTo(-a, -b); ctx.lineTo(a, -b); ctx.lineTo(a, -a);
+    ctx.lineTo(b, -a); ctx.lineTo(b, a); ctx.lineTo(a, a);
+    ctx.lineTo(a, b); ctx.lineTo(-a, b); ctx.lineTo(-a, a);
+    ctx.lineTo(-b, a); ctx.lineTo(-b, -a); ctx.lineTo(-a, -a);
+    ctx.closePath();
+  } else if (shape === 'ring') {
+    // filled ring = donut (outer path + hole via evenodd)
+    ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.moveTo(s * 0.22, 0);
+    ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fill('evenodd');
     ctx.beginPath();
-    for (let t = -h; t < w + h; t += 5.5) {
-      ctx.moveTo(x + t, y);
-      ctx.lineTo(x + t + h, y + h);
-    }
+    ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
     ctx.stroke();
-  } else if (mark === 3) {
-    // cross-hatch
     ctx.beginPath();
-    for (let t = -h; t < w + h; t += 7) {
-      ctx.moveTo(x + t, y);
-      ctx.lineTo(x + t + h, y + h);
-      ctx.moveTo(x + t, y + h);
-      ctx.lineTo(x + t + h, y);
-    }
+    ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2);
     ctx.stroke();
-  } else if (mark === 4) {
-    // horizontal waves
-    ctx.beginPath();
-    for (let row = y + 4; row < y + h - 2; row += 6) {
-      ctx.moveTo(x + 2, row);
-      for (let px = x + 2; px < x + w - 2; px += 4) {
-        const wave = Math.sin((px - x) * 0.45) * 1.6;
-        ctx.lineTo(px, row + wave);
-      }
-    }
+    ctx.restore();
+    return;
+  } else if (shape === 'bar') {
+    const r = s * 0.12;
+    roundRect(ctx, -s * 0.45, -r, s * 0.9, r * 2, r);
+  } else if (shape === 'moon') {
+    // crescent path (no destination-out — that would punch the liquid)
+    const R = s * 0.44;
+    const r = s * 0.34;
+    const ox = s * 0.16;
+    ctx.moveTo(Math.cos(-1.15) * R, Math.sin(-1.15) * R);
+    ctx.arc(0, 0, R, -1.15, 1.15, false);
+    ctx.arc(ox, 0, r, 1.05, -1.05, true);
+    ctx.closePath();
+  } else if (shape === 'x') {
+    const r = s * 0.38;
+    ctx.lineWidth = Math.max(2.4, s * 0.18);
+    ctx.moveTo(-r, -r); ctx.lineTo(r, r);
+    ctx.moveTo(r, -r); ctx.lineTo(-r, r);
+    ctx.strokeStyle = '#FFFFFF';
     ctx.stroke();
-  } else if (mark === 5) {
-    // diamonds
-    const step = Math.max(6, Math.min(10, w * 0.35));
-    ctx.beginPath();
-    for (let py = y + step * 0.5; py < y + h; py += step) {
-      for (let px = x + step * 0.5; px < x + w; px += step) {
-        const s = 2.2;
-        ctx.moveTo(px, py - s);
-        ctx.lineTo(px + s, py);
-        ctx.lineTo(px, py + s);
-        ctx.lineTo(px - s, py);
-        ctx.closePath();
-      }
-    }
+    ctx.strokeStyle = outlineHex || '#111';
+    ctx.lineWidth = Math.max(1.4, s * 0.1);
     ctx.stroke();
+    ctx.restore();
+    return;
+  } else if (shape === 'hex') {
+    const r = s * 0.42;
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 3;
+      const px = Math.cos(a) * r;
+      const py = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  } else {
+    ctx.arc(0, 0, s * 0.4, 0, Math.PI * 2);
   }
 
-  // light highlight version of marks so they pop on dark hues too
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.fillStyle = 'rgba(255,255,255,0.28)';
-  if (mark === 1) {
-    const step = Math.max(5, Math.min(8, w * 0.28));
-    for (let py = y + step * 0.55; py < y + h - 2; py += step) {
-      for (let px = x + step * 0.55; px < x + w - 2; px += step) {
-        ctx.beginPath();
-        ctx.arc(px - 0.4, py - 0.4, 0.9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -318,13 +357,12 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
     ctx.fillRect(liquidX - 6, uy - 10, liquidW + 12, uh + 16);
   }
 
-  // body gradient — vertical depth + horizontal cylinder shading
+  // Flat, bold fill — less gradient mush so colors stay pure and kid-readable
   const grad = ctx.createLinearGradient(liquidX, uy, liquidX + liquidW, uy);
-  grad.addColorStop(0, shade(def.glow, -35));
-  grad.addColorStop(0.18, def.color);
-  grad.addColorStop(0.5, shade(def.color, 40));
-  grad.addColorStop(0.82, def.glow);
-  grad.addColorStop(1, shade(def.glow, -40));
+  grad.addColorStop(0, shade(def.color, -18));
+  grad.addColorStop(0.35, def.color);
+  grad.addColorStop(0.7, def.glow);
+  grad.addColorStop(1, shade(def.color, -28));
   ctx.fillStyle = grad;
 
   // Rounded capsule path
@@ -348,8 +386,23 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
   ctx.closePath();
   ctx.fill();
 
-  // Distinct identity mark (helps when hues are hard to separate)
-  drawColorMark(ctx, def.mark | 0, x0, y0, x1 - x0, y1 - y0);
+  // Thick outline so neighboring units don't blend together
+  ctx.strokeStyle = def.outline || 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // Big shape badge kids can name (circle, star, heart…)
+  const badgeSize = Math.min(liquidW * 0.72, uh * 0.78, 22);
+  if (badgeSize >= 9) {
+    drawColorShape(
+      ctx,
+      def.shape || 'circle',
+      liquidX + liquidW / 2,
+      uy + uh * 0.52,
+      badgeSize,
+      def.outline
+    );
+  }
 
   // meniscus / surface for top unit
   if (isTop) {
@@ -361,36 +414,23 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
       Math.max(2.5, uh * 0.12),
       0, 0, Math.PI * 2
     );
-    const men = ctx.createRadialGradient(
-      liquidX + liquidW * 0.4, uy, 1,
-      liquidX + liquidW / 2, uy + 2, liquidW * 0.5
-    );
-    men.addColorStop(0, 'rgba(255,255,255,0.55)');
-    men.addColorStop(0.4, hexAlpha(def.color, 0.55));
-    men.addColorStop(1, hexAlpha(def.glow, 0.15));
-    ctx.fillStyle = men;
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.fill();
   }
 
-  // left glass highlight stripe on liquid
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
-  ctx.beginPath();
-  const hx = liquidX + liquidW * 0.16;
-  const hw = Math.max(2, liquidW * 0.1);
-  ctx.ellipse(
-    hx, uy + uh * 0.5,
-    hw, uh * 0.38,
-    0, 0, Math.PI * 2
-  );
-  ctx.fill();
-
-  // soft separator toward the unit above (not on top surface)
+  // clear white separator line between stacked colors
   if (!isTop) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(liquidX + 3, uy + 0.5);
+    ctx.lineTo(liquidX + liquidW - 3, uy + 0.5);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(liquidX + 3, uy);
-    ctx.lineTo(liquidX + liquidW - 3, uy);
+    ctx.moveTo(liquidX + 3, uy + 2);
+    ctx.lineTo(liquidX + liquidW - 3, uy + 2);
     ctx.stroke();
   }
 

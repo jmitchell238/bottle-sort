@@ -4,7 +4,7 @@
 // ---- Version (MAJOR.MINOR.PATCH) --------------------------------------------
 // Shown in the UI as "Bottle Sort vMAJOR.MINOR.PPP" (patch zero-padded to 3 digits).
 // Keep CACHE in sw.js in sync: 'bottle-sort-' + GAME_VERSION
-const GAME_VERSION = '1.1.001';
+const GAME_VERSION = '1.1.002';
 const GAME_VERSION_LABEL = 'v' + GAME_VERSION;
 const GAME_NAME = 'Bottle Sort';
 
@@ -15,23 +15,31 @@ const H = 700;
 // Bottle capacity (units of liquid per bottle)
 const CAPACITY = 4;
 
-// Color palette — maximally distinct hues (spaced around the wheel).
-// Avoid near-neighbors (cyan/mint, yellow/amber, pink/magenta) that used to blend.
-// `mark` = pattern style drawn on liquid so colors stay readable even if hues clash for some eyes.
-// mark: 0 solid · 1 dots · 2 stripes · 3 cross · 4 waves · 5 diamonds
+// Kid-first palette: crayons, not pastels.
+// Ordered so early levels only unlock the most obvious primaries first.
+// Each color has a BIG simple shape kids already know (not subtle texture).
+// shape: circle | square | triangle | star | heart | diamond | plus | ring | bar | moon | x | hex
 const COLORS = [
-  { id: 0,  color: '#FF3B30', glow: '#FF6259', label: 'Red',     mark: 0 },
-  { id: 1,  color: '#0A84FF', glow: '#409CFF', label: 'Blue',    mark: 1 },
-  { id: 2,  color: '#30D158', glow: '#4AE06C', label: 'Green',   mark: 2 },
-  { id: 3,  color: '#FFD60A', glow: '#FFE04A', label: 'Yellow',  mark: 0 },
-  { id: 4,  color: '#FF9F0A', glow: '#FFB340', label: 'Orange',  mark: 3 },
-  { id: 5,  color: '#BF5AF2', glow: '#D48FFF', label: 'Purple',  mark: 1 },
-  { id: 6,  color: '#FF2D95', glow: '#FF5AAD', label: 'Pink',    mark: 2 },
-  { id: 7,  color: '#64D2FF', glow: '#8ADEFF', label: 'Sky',     mark: 4 },
-  { id: 8,  color: '#A2845E', glow: '#C4A882', label: 'Brown',   mark: 3 },
-  { id: 9,  color: '#B0FF2D', glow: '#C6FF5C', label: 'Lime',    mark: 5 },
-  { id: 10, color: '#F5F5F7', glow: '#FFFFFF', label: 'White',   mark: 1 },
-  { id: 11, color: '#5E5CE6', glow: '#7D7AFF', label: 'Indigo',  mark: 5 },
+  { id: 0,  color: '#E53935', glow: '#FF5252', label: 'Red',     shape: 'circle',   outline: '#7F0000' },
+  { id: 1,  color: '#1E88E5', glow: '#42A5F5', label: 'Blue',    shape: 'square',   outline: '#0D47A1' },
+  { id: 2,  color: '#43A047', glow: '#66BB6A', label: 'Green',   shape: 'triangle', outline: '#1B5E20' },
+  { id: 3,  color: '#FDD835', glow: '#FFEE58', label: 'Yellow',  shape: 'star',     outline: '#F57F17' },
+  // Deeper pumpkin orange — clearly darker / redder than yellow
+  { id: 4,  color: '#EF6C00', glow: '#FF9800', label: 'Orange',  shape: 'heart',    outline: '#E65100' },
+  // Vivid violet — not blue-ish
+  { id: 5,  color: '#8E24AA', glow: '#AB47BC', label: 'Purple',  shape: 'diamond',  outline: '#4A148C' },
+  // Soft light pink — much lighter than red (not hot magenta)
+  { id: 6,  color: '#F48FB1', glow: '#F8BBD0', label: 'Pink',    shape: 'moon',     outline: '#AD1457' },
+  // Deep teal — green-blue, not light sky near blue
+  { id: 7,  color: '#00897B', glow: '#26A69A', label: 'Teal',    shape: 'plus',     outline: '#004D40' },
+  // Chocolate brown
+  { id: 8,  color: '#6D4C41', glow: '#8D6E63', label: 'Brown',   shape: 'bar',      outline: '#3E2723' },
+  // Near-white
+  { id: 9,  color: '#FAFAFA', glow: '#FFFFFF', label: 'White',   shape: 'ring',     outline: '#616161' },
+  // Near-black charcoal (reads as “black liquid,” not empty glass)
+  { id: 10, color: '#263238', glow: '#455A64', label: 'Black',   shape: 'x',        outline: '#000000' },
+  // Medium gray — between white and black, no hue to confuse
+  { id: 11, color: '#90A4AE', glow: '#B0BEC5', label: 'Gray',    shape: 'hex',      outline: '#37474F' },
 ];
 
 const MAX_COLORS = COLORS.length;
