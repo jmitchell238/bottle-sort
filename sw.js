@@ -1,5 +1,5 @@
 // Bump with GAME_VERSION in js/config.js (MAJOR.MINOR.PATCH).
-const CACHE = 'bottle-sort-1.0.000';
+const CACHE = 'bottle-sort-1.0.001';
 
 const ASSETS = [
   './',
