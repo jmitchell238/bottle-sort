@@ -206,6 +206,93 @@ function pathBottleInner(ctx, g) {
 }
 
 /**
+ * Subtle pattern unique to each color family so liquids stay distinguishable.
+ * Drawn inside the already-filled unit (caller has filled the capsule).
+ */
+function drawColorMark(ctx, mark, x, y, w, h) {
+  if (!mark) return; // solid — no extra pattern
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x + 1, y + 1, w - 2, h - 2);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 1.2;
+
+  if (mark === 1) {
+    // dots
+    const step = Math.max(5, Math.min(8, w * 0.28));
+    for (let py = y + step * 0.55; py < y + h - 2; py += step) {
+      for (let px = x + step * 0.55; px < x + w - 2; px += step) {
+        ctx.beginPath();
+        ctx.arc(px, py, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (mark === 2) {
+    // diagonal stripes
+    ctx.beginPath();
+    for (let t = -h; t < w + h; t += 5.5) {
+      ctx.moveTo(x + t, y);
+      ctx.lineTo(x + t + h, y + h);
+    }
+    ctx.stroke();
+  } else if (mark === 3) {
+    // cross-hatch
+    ctx.beginPath();
+    for (let t = -h; t < w + h; t += 7) {
+      ctx.moveTo(x + t, y);
+      ctx.lineTo(x + t + h, y + h);
+      ctx.moveTo(x + t, y + h);
+      ctx.lineTo(x + t + h, y);
+    }
+    ctx.stroke();
+  } else if (mark === 4) {
+    // horizontal waves
+    ctx.beginPath();
+    for (let row = y + 4; row < y + h - 2; row += 6) {
+      ctx.moveTo(x + 2, row);
+      for (let px = x + 2; px < x + w - 2; px += 4) {
+        const wave = Math.sin((px - x) * 0.45) * 1.6;
+        ctx.lineTo(px, row + wave);
+      }
+    }
+    ctx.stroke();
+  } else if (mark === 5) {
+    // diamonds
+    const step = Math.max(6, Math.min(10, w * 0.35));
+    ctx.beginPath();
+    for (let py = y + step * 0.5; py < y + h; py += step) {
+      for (let px = x + step * 0.5; px < x + w; px += step) {
+        const s = 2.2;
+        ctx.moveTo(px, py - s);
+        ctx.lineTo(px + s, py);
+        ctx.lineTo(px, py + s);
+        ctx.lineTo(px - s, py);
+        ctx.closePath();
+      }
+    }
+    ctx.stroke();
+  }
+
+  // light highlight version of marks so they pop on dark hues too
+  ctx.globalCompositeOperation = 'soft-light';
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  if (mark === 1) {
+    const step = Math.max(5, Math.min(8, w * 0.28));
+    for (let py = y + step * 0.55; py < y + h - 2; py += step) {
+      for (let px = x + step * 0.55; px < x + w - 2; px += step) {
+        ctx.beginPath();
+        ctx.arc(px - 0.4, py - 0.4, 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+/**
  * Draw one liquid unit as a soft capsule / rounded slab (not a hard rect).
  * i = 0 is bottom unit.
  */
@@ -260,6 +347,9 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
   ctx.quadraticCurveTo(x0, y0, x0 + rt, y0);
   ctx.closePath();
   ctx.fill();
+
+  // Distinct identity mark (helps when hues are hard to separate)
+  drawColorMark(ctx, def.mark | 0, x0, y0, x1 - x0, y1 - y0);
 
   // meniscus / surface for top unit
   if (isTop) {

@@ -59,6 +59,7 @@ function loadGame() {
     globalThis.__TEST__ = {
       GAME_VERSION, GAME_VERSION_LABEL, GAME_NAME,
       W, H, CAPACITY, COLORS, MAX_COLORS, POUR_DUR,
+      // COLORS is the palette array
       levelSpec, cloneBottles, bottleTop, bottleSpace,
       isBottleComplete, isSolved, topRunLength, canPour, pourAmount, pour,
       makeSolved, scrambleBottles, forceMessy, generateLevel,
@@ -348,6 +349,25 @@ section('html / css hooks');
   assert(html.includes('js/main.js'), 'loads main.js');
   const css = read('css/style.css');
   assert(css.includes('--cyan'), 'css has neon tokens');
+}
+
+section('distinct palette');
+{
+  const T = loadGame();
+  assertEq(T.COLORS.length, 12, '12 colors');
+  // Every color must declare a mark style (0–5)
+  for (const c of T.COLORS) {
+    assert(c.color && c.glow && c.label, `color ${c.id} has color/glow/label`);
+    assert(c.mark >= 0 && c.mark <= 5, `color ${c.id} has mark 0-5`);
+  }
+  // No duplicate hex fills
+  const fills = T.COLORS.map(c => c.color.toLowerCase());
+  assertEq(new Set(fills).size, fills.length, 'unique fill hexes');
+  // Rough hue spread: first 6 should be classic primary set
+  assert(T.COLORS[0].label === 'Red', 'id0 Red');
+  assert(T.COLORS[1].label === 'Blue', 'id1 Blue');
+  assert(T.COLORS[2].label === 'Green', 'id2 Green');
+  assert(T.COLORS[3].label === 'Yellow', 'id3 Yellow');
 }
 
 // summary
