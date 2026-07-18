@@ -4,7 +4,7 @@
 // ---- Version (MAJOR.MINOR.PATCH) --------------------------------------------
 // Shown in the UI as "Bottle Sort vMAJOR.MINOR.PPP" (patch zero-padded to 3 digits).
 // Keep CACHE in sw.js in sync: 'bottle-sort-' + GAME_VERSION
-const GAME_VERSION = '1.0.001';
+const GAME_VERSION = '1.0.002';
 const GAME_VERSION_LABEL = 'v' + GAME_VERSION;
 const GAME_NAME = 'Bottle Sort';
 

@@ -178,16 +178,44 @@ function updatePlayChrome() {
   if (undoBtn) undoBtn.disabled = history.length === 0 || !!pourAnim;
 }
 
-function stageFromClient(clientX, clientY, cv) {
-  const rect = cv.getBoundingClientRect();
+function stageFromClient(clientX, clientY, cvEl) {
+  const el = cvEl || (typeof cv !== 'undefined' ? cv : null);
+  if (!el) return { x: 0, y: 0 };
+  const rect = el.getBoundingClientRect();
+  // Guard against zero-size rects (layout not ready)
+  if (!rect.width || !rect.height) return { x: -1, y: -1 };
   const x = ((clientX - rect.left) / rect.width) * W;
   const y = ((clientY - rect.top) / rect.height) * H;
   return { x, y };
 }
 
-function handleStageTap(clientX, clientY, cv) {
-  if (state !== 'play') return;
-  const { x, y } = stageFromClient(clientX, clientY, cv);
-  const idx = hitTestBottle(layout, x, y);
-  if (idx >= 0) tapBottle(idx);
+/**
+ * Map a client point to a bottle index, or -1.
+ * Accounts for selected-bottle lift and padded touch targets.
+ */
+function bottleAtClient(clientX, clientY, cvEl) {
+  const { x, y } = stageFromClient(clientX, clientY, cvEl);
+  if (x < 0 || y < 0) return -1;
+  return hitTestBottle(layout, x, y, {
+    selected,
+    lift: 14,
+    padX: 16,
+    padY: 22,
+  });
+}
+
+function handleStageTap(clientX, clientY, cvEl) {
+  if (state !== 'play') return null;
+  if (pourAnim) return 'busy';
+  const idx = bottleAtClient(clientX, clientY, cvEl);
+  if (idx < 0) {
+    // Tap empty space while selected → deselect
+    if (selected >= 0) {
+      selected = -1;
+      if (typeof sfxClick === 'function') sfxClick();
+      return 'deselect';
+    }
+    return null;
+  }
+  return tapBottle(idx);
 }

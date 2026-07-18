@@ -4,6 +4,8 @@ const cv = document.getElementById('cv');
 const stage = document.getElementById('stage');
 let ctx = null;
 let last = performance.now();
+// Suppress duplicate touch after pointer (iOS/Android fire both)
+let lastPointerHandledAt = 0;
 
 function setScreen(name) {
   document.querySelectorAll('.screen').forEach(el => {
@@ -29,8 +31,6 @@ function showMenu() {
 
 function showPlay(lvl) {
   const start = lvl != null ? lvl : Math.max(1, save.bestLevel || 1);
-  // When continuing, play the highest unlocked; "Play" from menu uses bestLevel
-  // but if they just want to play current progress that's fine.
   startLevel(start);
   setScreen('play');
 }
@@ -78,34 +78,58 @@ function frame(now) {
 // ---------- input ----------
 function isUiChrome(target) {
   if (!target || !target.closest) return false;
+  // Only real interactive chrome — NOT full .screen overlays (they are
+  // display:none during play, but never block via this check on canvas).
   return !!(
     target.closest('button') ||
-    target.closest('.screen') ||
-    target.closest('.play-chrome')
+    target.closest('a') ||
+    target.closest('.menu-card')
   );
 }
 
-function onPointerDown(e) {
-  if (state !== 'play') return;
-  if (isUiChrome(e.target)) return;
-  e.preventDefault();
+function onPlayTap(clientX, clientY, e) {
+  if (state !== 'play') return false;
+  if (e && isUiChrome(e.target)) return false;
+  if (e) e.preventDefault();
   ensureAudio();
-  handleStageTap(e.clientX, e.clientY, cv);
+  handleStageTap(clientX, clientY, cv);
+  return true;
+}
+
+function onPointerDown(e) {
+  // Only primary button / touch / pen
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (onPlayTap(e.clientX, e.clientY, e)) {
+    lastPointerHandledAt = performance.now();
+    try { stage.setPointerCapture(e.pointerId); } catch (_) { /* ok */ }
+  }
 }
 
 function onTouchStart(e) {
-  if (state !== 'play') return;
-  if (isUiChrome(e.target)) return;
+  // If Pointer Events already handled this gesture, ignore (prevents select→deselect)
+  if (performance.now() - lastPointerHandledAt < 600) {
+    e.preventDefault();
+    return;
+  }
   const t = e.changedTouches && e.changedTouches[0];
   if (!t) return;
-  e.preventDefault();
-  ensureAudio();
-  handleStageTap(t.clientX, t.clientY, cv);
+  onPlayTap(t.clientX, t.clientY, e);
+}
+
+function onMouseDown(e) {
+  // Legacy mouse only when PointerEvent is missing
+  if (window.PointerEvent) return;
+  if (e.button !== 0) return;
+  onPlayTap(e.clientX, e.clientY, e);
 }
 
 const ptrOpts = { passive: false };
+// Listen on STAGE only (not canvas too) — canvas is inside stage, so dual
+// listeners would bubble and fire select → deselect on the same tap.
+// Pointer Events cover mouse + touch + pen; touch/mouse are fallbacks.
 stage.addEventListener('pointerdown', onPointerDown, ptrOpts);
 stage.addEventListener('touchstart', onTouchStart, ptrOpts);
+stage.addEventListener('mousedown', onMouseDown, ptrOpts);
 
 addEventListener('keydown', e => {
   if (state === 'menu' && (e.key === 'Enter' || e.key === ' ')) {

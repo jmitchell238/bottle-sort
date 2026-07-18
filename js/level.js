@@ -204,13 +204,35 @@ function generateLevel(levelOrSpec, rng = Math.random) {
 /**
  * Hit-test: which bottle index is under stage point (x,y)?
  * layout is array of { x, y, w, h } bottle rects (top-left).
+ * Uses a generous padded hit box (touch-friendly) and optional lift.
  */
-function hitTestBottle(layout, x, y) {
+function hitTestBottle(layout, x, y, opts = {}) {
+  const padX = opts.padX != null ? opts.padX : 14;
+  const padY = opts.padY != null ? opts.padY : 18;
+  const lift = opts.lift || 0;       // selected bottle rises this much
+  const selected = opts.selected != null ? opts.selected : -1;
+
+  let best = -1;
+  let bestDist = Infinity;
   for (let i = 0; i < layout.length; i++) {
     const r = layout[i];
-    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    const ly = r.y - (i === selected ? lift : 0);
+    const x0 = r.x - padX;
+    const x1 = r.x + r.w + padX;
+    const y0 = ly - padY;
+    const y1 = ly + r.h + padY;
+    if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+      // Prefer the closest bottle center (handles overlapping pads)
+      const dx = x - r.cx;
+      const dy = y - (ly + r.h * 0.55);
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
   }
-  return -1;
+  return best;
 }
 
 /**

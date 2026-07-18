@@ -217,6 +217,9 @@ section('level generation');
   const hit = T.hitTestBottle(lay, lay[2].cx, lay[2].y + lay[2].h / 2);
   assertEq(hit, 2, 'hit test middle bottle');
   assertEq(T.hitTestBottle(lay, 0, 0), -1, 'miss outside');
+  // padded hit box still finds the bottle near the edge
+  const near = T.hitTestBottle(lay, lay[0].x - 8, lay[0].y + lay[0].h / 2, { padX: 16, padY: 16 });
+  assertEq(near, 0, 'padded hit finds bottle 0');
 }
 
 // -------------------- game flow --------------------

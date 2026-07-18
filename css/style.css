@@ -50,6 +50,8 @@ html, body {
   top: 50%;
   transform: translate(-50%, -50%);
   line-height: 0;
+  /* Stage must receive hits even when canvas is the visual target */
+  touch-action: none;
 }
 
 #cv {
@@ -61,6 +63,8 @@ html, body {
     0 0 80px rgba(61, 231, 255, 0.08);
   cursor: pointer;
   touch-action: none;
+  position: relative;
+  z-index: 1;
 }
 
 .screen {
@@ -69,6 +73,7 @@ html, body {
   border-radius: 18px;
   overflow: hidden;
   line-height: normal;
+  pointer-events: none; /* never block canvas hits when visible remnants exist */
 }
 
 .screen[data-screen="menu"],
@@ -82,10 +87,16 @@ html, body {
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   z-index: 5;
+  pointer-events: auto; /* menus need clicks */
+}
+
+.screen.hidden {
+  pointer-events: none !important;
 }
 
 .play-chrome {
   z-index: 6;
+  pointer-events: auto;
 }
 
 .menu-card {

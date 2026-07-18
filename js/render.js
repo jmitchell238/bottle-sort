@@ -41,6 +41,16 @@ function shade(hex, amt) {
   return `rgb(${r},${g},${b})`;
 }
 
+function hexAlpha(hex, a) {
+  const n = hex.replace('#', '');
+  const full = n.length === 3 ? n.split('').map(c => c + c).join('') : n;
+  const num = parseInt(full, 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 function drawBackground(ctx) {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#0a1024');
@@ -61,17 +71,18 @@ function drawBackground(ctx) {
   ctx.fillStyle = b;
   ctx.fillRect(0, 0, W, H);
 
-  // faint shelf line
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
+  // shelf
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(24, H - 78);
   ctx.lineTo(W - 24, H - 78);
   ctx.stroke();
+  ctx.fillStyle = 'rgba(61,231,255,0.04)';
+  ctx.fillRect(20, H - 78, W - 40, 10);
 }
 
 function drawHud(ctx, levelNum, moveCount) {
-  // level pill
   ctx.fillStyle = 'rgba(8,12,24,0.55)';
   roundRect(ctx, 14, 14, 120, 54, 14);
   ctx.fill();
@@ -83,7 +94,6 @@ function drawHud(ctx, levelNum, moveCount) {
   ctx.font = '800 22px system-ui,sans-serif';
   ctx.fillText(String(levelNum), 28, 54);
 
-  // moves pill
   ctx.fillStyle = 'rgba(8,12,24,0.55)';
   roundRect(ctx, W - 134, 14, 120, 54, 14);
   ctx.fill();
@@ -95,7 +105,6 @@ function drawHud(ctx, levelNum, moveCount) {
   ctx.font = '800 22px system-ui,sans-serif';
   ctx.fillText(String(moveCount), W - 28, 54);
 
-  // title chip center
   ctx.fillStyle = 'rgba(8,12,24,0.45)';
   roundRect(ctx, W / 2 - 52, 20, 104, 42, 12);
   ctx.fill();
@@ -106,157 +115,300 @@ function drawHud(ctx, levelNum, moveCount) {
 }
 
 /**
- * Draw a single glass bottle with stacked neon liquid.
- * bottle: array of color ids bottom→top
- * rect: layout entry
- * opts: { selected, lift, dimTopUnits }
+ * Geometry for a bottle drawn inside rect (with optional lift applied to y).
+ * Returns measurements used by both path + liquid fill.
  */
-function drawBottle(ctx, bottle, rect, opts = {}) {
-  const { selected = false, lift = 0, hideTop = 0 } = opts;
-  const cap = capacity || CAPACITY;
+function bottleGeom(rect, lift = 0) {
   const x = rect.x;
   const y = rect.y - lift;
   const w = rect.w;
   const h = rect.h;
 
-  const neckH = h * 0.12;
-  const bodyTop = y + neckH;
-  const bodyH = h - neckH;
-  const bodyW = w * 0.92;
-  const bodyX = x + (w - bodyW) / 2;
-  const corner = Math.min(14, bodyW * 0.28);
+  const lipH = Math.max(4, h * 0.035);
+  const neckH = h * 0.11;
+  const shoulderH = h * 0.08;
+  const bodyTop = y + lipH + neckH + shoulderH;
+  const bodyBottom = y + h;
+  const bodyH = bodyBottom - bodyTop;
 
-  // selection glow
+  const bodyW = w * 0.88;
+  const bodyX = x + (w - bodyW) / 2;
+  const neckW = bodyW * 0.38;
+  const neckX = x + (w - neckW) / 2;
+  const lipW = neckW * 1.28;
+  const lipX = x + (w - lipW) / 2;
+
+  const corner = Math.min(bodyW * 0.42, bodyH * 0.18, 22);
+  const cx = x + w / 2;
+
+  // Liquid lives in the body with a small glass rim inset
+  const inset = Math.max(2.5, bodyW * 0.07);
+  const liquidX = bodyX + inset;
+  const liquidW = bodyW - inset * 2;
+  const liquidBottom = bodyBottom - inset * 0.9;
+  const liquidTop = bodyTop + inset * 0.35;
+  const liquidH = liquidBottom - liquidTop;
+
+  return {
+    x, y, w, h, cx,
+    lipH, neckH, shoulderH,
+    bodyTop, bodyBottom, bodyH, bodyW, bodyX,
+    neckW, neckX, lipW, lipX, corner,
+    liquidX, liquidW, liquidTop, liquidBottom, liquidH,
+  };
+}
+
+/** Outer glass silhouette path (closed). */
+function pathBottleOuter(ctx, g) {
+  const {
+    lipX, lipW, lipH, y,
+    neckX, neckW, neckH,
+    bodyX, bodyW, bodyTop, bodyBottom, corner,
+  } = g;
+  const shoulderY = y + lipH + neckH;
+
+  ctx.beginPath();
+  // lip top
+  ctx.moveTo(lipX, y + lipH * 0.35);
+  ctx.lineTo(lipX + lipW, y + lipH * 0.35);
+  // lip right down into neck
+  ctx.lineTo(neckX + neckW, y + lipH);
+  ctx.lineTo(neckX + neckW, shoulderY);
+  // shoulder curve out to body
+  ctx.quadraticCurveTo(neckX + neckW, bodyTop, bodyX + bodyW, bodyTop + corner * 0.15);
+  // right side down
+  ctx.lineTo(bodyX + bodyW, bodyBottom - corner);
+  // rounded bottom
+  ctx.quadraticCurveTo(bodyX + bodyW, bodyBottom, bodyX + bodyW - corner, bodyBottom);
+  ctx.lineTo(bodyX + corner, bodyBottom);
+  ctx.quadraticCurveTo(bodyX, bodyBottom, bodyX, bodyBottom - corner);
+  // left side up
+  ctx.lineTo(bodyX, bodyTop + corner * 0.15);
+  // shoulder into neck
+  ctx.quadraticCurveTo(neckX, bodyTop, neckX, shoulderY);
+  ctx.lineTo(neckX, y + lipH);
+  ctx.lineTo(lipX, y + lipH * 0.35);
+  ctx.closePath();
+}
+
+/** Interior clip path for liquid (slightly inset body + rounded bottom). */
+function pathBottleInner(ctx, g) {
+  const { liquidX, liquidW, liquidTop, liquidBottom } = g;
+  const r = Math.min(liquidW * 0.42, 16);
+  ctx.beginPath();
+  ctx.moveTo(liquidX, liquidTop);
+  ctx.lineTo(liquidX + liquidW, liquidTop);
+  ctx.lineTo(liquidX + liquidW, liquidBottom - r);
+  ctx.quadraticCurveTo(liquidX + liquidW, liquidBottom, liquidX + liquidW - r, liquidBottom);
+  ctx.lineTo(liquidX + r, liquidBottom);
+  ctx.quadraticCurveTo(liquidX, liquidBottom, liquidX, liquidBottom - r);
+  ctx.closePath();
+}
+
+/**
+ * Draw one liquid unit as a soft capsule / rounded slab (not a hard rect).
+ * i = 0 is bottom unit.
+ */
+function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
+  const def = COLORS[colorId] || COLORS[0];
+  const { liquidX, liquidW, liquidBottom } = g;
+  const uy = liquidBottom - (i + 1) * unitH;
+  const uh = unitH + 0.6; // slight overlap kills seams
+  const rSide = Math.min(liquidW * 0.48, uh * 0.45, 14);
+  const rBot = isBottom ? Math.min(liquidW * 0.42, uh * 0.55, 16) : rSide * 0.6;
+
+  ctx.save();
+
+  // soft outer glow (sits behind, clipped by caller)
+  if (isTop) {
+    const glow = ctx.createRadialGradient(
+      liquidX + liquidW / 2, uy + uh * 0.2, 2,
+      liquidX + liquidW / 2, uy + uh * 0.2, liquidW * 0.85
+    );
+    glow.addColorStop(0, hexAlpha(def.glow, 0.45));
+    glow.addColorStop(1, hexAlpha(def.glow, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(liquidX - 6, uy - 10, liquidW + 12, uh + 16);
+  }
+
+  // body gradient — vertical depth + horizontal cylinder shading
+  const grad = ctx.createLinearGradient(liquidX, uy, liquidX + liquidW, uy);
+  grad.addColorStop(0, shade(def.glow, -35));
+  grad.addColorStop(0.18, def.color);
+  grad.addColorStop(0.5, shade(def.color, 40));
+  grad.addColorStop(0.82, def.glow);
+  grad.addColorStop(1, shade(def.glow, -40));
+  ctx.fillStyle = grad;
+
+  // Rounded capsule path
+  const x0 = liquidX;
+  const x1 = liquidX + liquidW;
+  const y0 = uy;
+  const y1 = uy + uh;
+  const rt = isTop ? Math.min(rSide, uh * 0.4) : 1.5;
+  const rb = isBottom ? rBot : 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(x0 + rt, y0);
+  ctx.lineTo(x1 - rt, y0);
+  ctx.quadraticCurveTo(x1, y0, x1, y0 + rt);
+  ctx.lineTo(x1, y1 - rb);
+  ctx.quadraticCurveTo(x1, y1, x1 - rb, y1);
+  ctx.lineTo(x0 + rb, y1);
+  ctx.quadraticCurveTo(x0, y1, x0, y1 - rb);
+  ctx.lineTo(x0, y0 + rt);
+  ctx.quadraticCurveTo(x0, y0, x0 + rt, y0);
+  ctx.closePath();
+  ctx.fill();
+
+  // meniscus / surface for top unit
+  if (isTop) {
+    ctx.beginPath();
+    ctx.ellipse(
+      liquidX + liquidW / 2,
+      uy + Math.max(2, uh * 0.08),
+      liquidW * 0.42,
+      Math.max(2.5, uh * 0.12),
+      0, 0, Math.PI * 2
+    );
+    const men = ctx.createRadialGradient(
+      liquidX + liquidW * 0.4, uy, 1,
+      liquidX + liquidW / 2, uy + 2, liquidW * 0.5
+    );
+    men.addColorStop(0, 'rgba(255,255,255,0.55)');
+    men.addColorStop(0.4, hexAlpha(def.color, 0.55));
+    men.addColorStop(1, hexAlpha(def.glow, 0.15));
+    ctx.fillStyle = men;
+    ctx.fill();
+  }
+
+  // left glass highlight stripe on liquid
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.beginPath();
+  const hx = liquidX + liquidW * 0.16;
+  const hw = Math.max(2, liquidW * 0.1);
+  ctx.ellipse(
+    hx, uy + uh * 0.5,
+    hw, uh * 0.38,
+    0, 0, Math.PI * 2
+  );
+  ctx.fill();
+
+  // soft separator toward the unit above (not on top surface)
+  if (!isTop) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(liquidX + 3, uy);
+    ctx.lineTo(liquidX + liquidW - 3, uy);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw a single glass bottle with stacked neon liquid.
+ */
+function drawBottle(ctx, bottle, rect, opts = {}) {
+  const { selected = false, lift = 0, hideTop = 0 } = opts;
+  const cap = capacity || CAPACITY;
+  const g = bottleGeom(rect, lift);
+
+  // selection glow under the bottle
   if (selected) {
     const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(selectPulse));
     ctx.save();
-    ctx.shadowColor = `rgba(61,231,255,${0.35 + pulse * 0.45})`;
-    ctx.shadowBlur = 18 + pulse * 10;
-    ctx.strokeStyle = `rgba(61,231,255,${0.5 + pulse * 0.4})`;
-    ctx.lineWidth = 3;
-    roundRect(ctx, bodyX - 4, y - 4, bodyW + 8, h + 8, corner + 4);
+    ctx.shadowColor = `rgba(61,231,255,${0.4 + pulse * 0.45})`;
+    ctx.shadowBlur = 20 + pulse * 12;
+    ctx.strokeStyle = `rgba(61,231,255,${0.55 + pulse * 0.4})`;
+    ctx.lineWidth = 3.5;
+    pathBottleOuter(ctx, g);
     ctx.stroke();
     ctx.restore();
   }
 
-  // liquid region (inside body, leave glass rim)
-  const pad = Math.max(3, bodyW * 0.08);
-  const innerX = bodyX + pad;
-  const innerW = bodyW - pad * 2;
-  const innerBottom = y + h - pad;
-  const innerTop = bodyTop + pad * 0.6;
-  const innerH = innerBottom - innerTop;
-  const unitH = innerH / cap;
+  // 1) faint inner glass fill (empty look)
+  ctx.save();
+  pathBottleOuter(ctx, g);
+  ctx.clip();
+  const empty = ctx.createLinearGradient(g.bodyX, g.y, g.bodyX + g.bodyW, g.y);
+  empty.addColorStop(0, 'rgba(160,200,255,0.07)');
+  empty.addColorStop(0.45, 'rgba(255,255,255,0.03)');
+  empty.addColorStop(1, 'rgba(120,160,220,0.08)');
+  ctx.fillStyle = empty;
+  ctx.fillRect(g.x - 4, g.y - 4, g.w + 8, g.h + 8);
+  ctx.restore();
 
-  // draw liquid units bottom-up
+  // 2) liquid — clipped to bottle interior
   const visible = bottle.slice(0, Math.max(0, bottle.length - hideTop));
-  for (let i = 0; i < visible.length; i++) {
-    const colorId = visible[i];
-    const def = COLORS[colorId] || COLORS[0];
-    const uy = innerBottom - (i + 1) * unitH;
-    const isBottom = i === 0;
-    const isTopVis = i === visible.length - 1;
-
+  if (visible.length) {
+    const unitH = g.liquidH / cap;
     ctx.save();
-    // clip to bottle body rounded shape
-    roundRect(ctx, bodyX, bodyTop, bodyW, bodyH, corner);
+    pathBottleInner(ctx, g);
     ctx.clip();
 
-    // unit fill
-    const g = ctx.createLinearGradient(innerX, uy, innerX + innerW, uy + unitH);
-    g.addColorStop(0, shade(def.color, 30));
-    g.addColorStop(0.45, def.color);
-    g.addColorStop(1, shade(def.glow, -20));
-    ctx.fillStyle = g;
-
-    if (isBottom) {
-      // rounded bottom of liquid
-      const r = Math.min(corner * 0.7, unitH * 0.5, innerW * 0.35);
-      roundRect(ctx, innerX, uy, innerW, unitH + 1, r);
-      ctx.fill();
-    } else {
-      ctx.fillRect(innerX, uy, innerW, unitH + 0.5);
-    }
-
-    // top surface highlight for top unit
-    if (isTopVis) {
-      ctx.fillStyle = def.glow + '55';
-      ctx.fillRect(innerX + 1, uy, innerW - 2, Math.max(2, unitH * 0.12));
-      // soft glow above surface
-      const glow = ctx.createRadialGradient(
-        innerX + innerW / 2, uy, 2,
-        innerX + innerW / 2, uy, innerW * 0.7
+    for (let i = 0; i < visible.length; i++) {
+      drawLiquidUnit(
+        ctx, g, visible[i], i, unitH,
+        i === 0,
+        i === visible.length - 1
       );
-      glow.addColorStop(0, def.glow + '40');
-      glow.addColorStop(1, def.glow + '00');
-      ctx.fillStyle = glow;
-      ctx.fillRect(innerX - 4, uy - 8, innerW + 8, 16);
-    }
-
-    // segment separator
-    if (i > 0) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(innerX + 2, uy + unitH);
-      ctx.lineTo(innerX + innerW - 2, uy + unitH);
-      ctx.stroke();
     }
     ctx.restore();
   }
 
-  // glass body stroke
+  // 3) glass outline + neck/lip on top so liquid reads as "inside"
   ctx.save();
-  // glass fill (subtle)
-  const glass = ctx.createLinearGradient(bodyX, bodyTop, bodyX + bodyW, bodyTop);
-  glass.addColorStop(0, 'rgba(180,210,255,0.08)');
-  glass.addColorStop(0.35, 'rgba(255,255,255,0.03)');
-  glass.addColorStop(0.7, 'rgba(180,210,255,0.06)');
-  glass.addColorStop(1, 'rgba(100,140,200,0.1)');
-  ctx.fillStyle = glass;
-  roundRect(ctx, bodyX, bodyTop, bodyW, bodyH, corner);
-  ctx.fill();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
-  // outline
+  // outer stroke
+  pathBottleOuter(ctx, g);
   ctx.strokeStyle = selected
-    ? 'rgba(61,231,255,0.75)'
-    : 'rgba(200,220,255,0.35)';
-  ctx.lineWidth = selected ? 2.2 : 1.8;
-  roundRect(ctx, bodyX, bodyTop, bodyW, bodyH, corner);
+    ? 'rgba(160,235,255,0.9)'
+    : 'rgba(200,220,255,0.55)';
+  ctx.lineWidth = selected ? 2.4 : 2;
   ctx.stroke();
 
-  // neck
-  const neckW = bodyW * 0.42;
-  const neckX = x + (w - neckW) / 2;
-  ctx.fillStyle = 'rgba(180,210,255,0.07)';
-  roundRect(ctx, neckX, y, neckW, neckH + 2, 4);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(200,220,255,0.32)';
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, neckX, y, neckW, neckH + 2, 4);
+  // inner rim hint
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  pathBottleInner(ctx, g);
   ctx.stroke();
 
-  // lip
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  // lip highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(neckX - 1, y + 2);
-  ctx.lineTo(neckX + neckW + 1, y + 2);
+  ctx.moveTo(g.lipX + 1, g.y + g.lipH * 0.4);
+  ctx.lineTo(g.lipX + g.lipW - 1, g.y + g.lipH * 0.4);
   ctx.stroke();
 
-  // glass shine
-  ctx.fillStyle = 'rgba(255,255,255,0.14)';
-  roundRect(ctx, bodyX + bodyW * 0.12, bodyTop + bodyH * 0.1, bodyW * 0.14, bodyH * 0.55, 6);
+  // vertical glass shine
+  const shine = ctx.createLinearGradient(g.bodyX, g.bodyTop, g.bodyX + g.bodyW * 0.35, g.bodyTop);
+  shine.addColorStop(0, 'rgba(255,255,255,0)');
+  shine.addColorStop(0.4, 'rgba(255,255,255,0.22)');
+  shine.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = shine;
+  ctx.beginPath();
+  ctx.ellipse(
+    g.bodyX + g.bodyW * 0.28,
+    g.bodyTop + g.bodyH * 0.42,
+    g.bodyW * 0.1,
+    g.bodyH * 0.32,
+    0, 0, Math.PI * 2
+  );
   ctx.fill();
 
-  // complete bottle checkmark glow
+  // complete bottle glow
   if (isBottleComplete(bottle, cap) && bottle.length === cap) {
     const def = COLORS[bottle[0]] || COLORS[0];
-    ctx.strokeStyle = def.glow + 'aa';
-    ctx.lineWidth = 2;
     ctx.shadowColor = def.glow;
-    ctx.shadowBlur = 10;
-    roundRect(ctx, bodyX - 2, bodyTop - 2, bodyW + 4, bodyH + 4, corner + 2);
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = hexAlpha(def.glow, 0.75);
+    ctx.lineWidth = 2.2;
+    pathBottleOuter(ctx, g);
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
@@ -275,53 +427,45 @@ function drawPourStream(ctx, anim, layoutArr) {
 
   const t = Math.min(1, anim.t / anim.duration);
   const def = COLORS[anim.color] || COLORS[0];
-
-  // lift source
-  // stream path
-  const x0 = fromR.cx;
-  const y0 = fromR.y - 18;
-  const x1 = toR.cx;
-  const y1 = toR.y + toR.h * 0.12;
-
-  // ease
   const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  const x0 = fromR.cx;
+  const y0 = fromR.y - 20;
+  const x1 = toR.cx;
+  const y1 = toR.y + toR.h * 0.1;
+  const mx = (x0 + x1) / 2;
+  const my = Math.min(y0, y1) - 36 - 16 * Math.sin(t * Math.PI);
 
   ctx.save();
   ctx.strokeStyle = def.glow;
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 6;
   ctx.lineCap = 'round';
-  ctx.globalAlpha = 0.35 + 0.45 * Math.sin(t * Math.PI);
+  ctx.globalAlpha = 0.3 + 0.5 * Math.sin(t * Math.PI);
   ctx.shadowColor = def.glow;
-  ctx.shadowBlur = 12;
-
-  const mx = (x0 + x1) / 2;
-  const my = Math.min(y0, y1) - 30 - 20 * Math.sin(t * Math.PI);
+  ctx.shadowBlur = 14;
 
   ctx.beginPath();
   ctx.moveTo(x0, y0);
-  // partial curve based on progress
-  const steps = Math.max(2, Math.floor(18 * e));
+  const steps = Math.max(2, Math.floor(20 * e));
   for (let i = 1; i <= steps; i++) {
-    const u = i / 18;
-    // quadratic bezier
+    const u = i / 20;
     const px = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mx + u * u * x1;
     const py = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * my + u * u * y1;
     ctx.lineTo(px, py);
   }
   ctx.stroke();
 
-  // droplet
   const u = e;
   const dx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mx + u * u * x1;
   const dy = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * my + u * u * y1;
-  const gr = ctx.createRadialGradient(dx, dy, 1, dx, dy, 10);
+  const gr = ctx.createRadialGradient(dx, dy, 1, dx, dy, 12);
   gr.addColorStop(0, '#fff');
-  gr.addColorStop(0.3, def.color);
-  gr.addColorStop(1, def.glow + '00');
+  gr.addColorStop(0.35, def.color);
+  gr.addColorStop(1, hexAlpha(def.glow, 0));
   ctx.fillStyle = gr;
   ctx.globalAlpha = 1;
   ctx.beginPath();
-  ctx.arc(dx, dy, 10, 0, Math.PI * 2);
+  ctx.arc(dx, dy, 11, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -331,23 +475,19 @@ function drawAllBottles(ctx) {
     const rect = layout[i];
     if (!rect) continue;
     let lift = 0;
-    let hideTop = 0;
-    if (selected === i) lift = 12;
+    if (selected === i) lift = 14;
     if (pourAnim && pourAnim.from === i) {
-      lift = 16 * (1 - Math.min(1, pourAnim.t / pourAnim.duration));
-      // liquid already moved; no hide needed
+      lift = 18 * (1 - Math.min(1, pourAnim.t / pourAnim.duration));
     }
     drawBottle(ctx, bottles[i], rect, {
       selected: selected === i,
       lift,
-      hideTop,
     });
   }
   if (pourAnim) drawPourStream(ctx, pourAnim, layout);
 }
 
 function drawIdleDecor(ctx, now) {
-  // menu idle: a few demo bottles
   const demo = [
     [0, 0, 1, 2],
     [1, 2, 2, 1],
@@ -359,14 +499,10 @@ function drawIdleDecor(ctx, now) {
   const t = now / 1000;
   for (let i = 0; i < demo.length; i++) {
     const lift = Math.sin(t * 1.3 + i) * 4;
-    // temporarily use capacity 4
-    const prev = bottles;
-    // draw without mutating game state — pass bottle directly
     drawBottle(ctx, demo[i], {
       ...demoLayout[i],
       y: demoLayout[i].y + 20,
     }, { selected: false, lift });
-    void prev;
   }
 }
 
