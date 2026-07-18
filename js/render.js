@@ -112,6 +112,8 @@ function drawHud(ctx, levelNum, moveCount) {
   ctx.font = '700 11px system-ui,sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('BOTTLE SORT', W / 2, 45);
+
+  drawModeBanner(ctx);
 }
 
 /**
@@ -336,7 +338,9 @@ function drawColorShape(ctx, shape, cx, cy, size, outlineHex) {
  * i = 0 is bottom unit.
  */
 function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
-  const def = COLORS[colorId] || COLORS[0];
+  const def = (typeof colorOf === 'function')
+    ? colorOf(colorId)
+    : (COLORS[colorId] || COLORS[0]);
   const { liquidX, liquidW, liquidBottom } = g;
   const uy = liquidBottom - (i + 1) * unitH;
   const uh = unitH + 0.6; // slight overlap kills seams
@@ -357,12 +361,11 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
     ctx.fillRect(liquidX - 6, uy - 10, liquidW + 12, uh + 16);
   }
 
-  // Flat, bold fill — less gradient mush so colors stay pure and kid-readable
+  // Nearly flat pure fill — keep hue true (no mushy gradients)
   const grad = ctx.createLinearGradient(liquidX, uy, liquidX + liquidW, uy);
-  grad.addColorStop(0, shade(def.color, -18));
-  grad.addColorStop(0.35, def.color);
-  grad.addColorStop(0.7, def.glow);
-  grad.addColorStop(1, shade(def.color, -28));
+  grad.addColorStop(0, shade(def.color, -12));
+  grad.addColorStop(0.5, def.color);
+  grad.addColorStop(1, shade(def.color, -22));
   ctx.fillStyle = grad;
 
   // Rounded capsule path
@@ -386,22 +389,24 @@ function drawLiquidUnit(ctx, g, colorId, i, unitH, isBottom, isTop) {
   ctx.closePath();
   ctx.fill();
 
-  // Thick outline so neighboring units don't blend together
-  ctx.strokeStyle = def.outline || 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 1.6;
+  // Thick dark outline so neighboring units don't blend
+  ctx.strokeStyle = def.outline || 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Big shape badge kids can name (circle, star, heart…)
-  const badgeSize = Math.min(liquidW * 0.72, uh * 0.78, 22);
-  if (badgeSize >= 9) {
-    drawColorShape(
-      ctx,
-      def.shape || 'circle',
-      liquidX + liquidW / 2,
-      uy + uh * 0.52,
-      badgeSize,
-      def.outline
-    );
+  // Shape badges ONLY on Shape Help levels / shapes mode
+  if (typeof showShapes !== 'undefined' && showShapes) {
+    const badgeSize = Math.min(liquidW * 0.72, uh * 0.78, 22);
+    if (badgeSize >= 9) {
+      drawColorShape(
+        ctx,
+        def.shape || 'circle',
+        liquidX + liquidW / 2,
+        uy + uh * 0.52,
+        badgeSize,
+        def.outline
+      );
+    }
   }
 
   // meniscus / surface for top unit
@@ -460,7 +465,7 @@ function drawBottle(ctx, bottle, rect, opts = {}) {
 
   // just-completed pulse halo
   if (completeBoost > 0 && bottle.length === cap) {
-    const def = COLORS[bottle[0]] || COLORS[0];
+    const def = (typeof colorOf === 'function') ? colorOf(bottle[0]) : (COLORS[bottle[0]] || COLORS[0]);
     const t = Math.min(1, completeBoost / 0.7);
     ctx.save();
     ctx.shadowColor = def.glow;
@@ -547,7 +552,7 @@ function drawBottle(ctx, bottle, rect, opts = {}) {
 
   // complete bottle glow
   if (isBottleComplete(bottle, cap) && bottle.length === cap) {
-    const def = COLORS[bottle[0]] || COLORS[0];
+    const def = (typeof colorOf === 'function') ? colorOf(bottle[0]) : (COLORS[bottle[0]] || COLORS[0]);
     ctx.shadowColor = def.glow;
     ctx.shadowBlur = 14;
     ctx.strokeStyle = hexAlpha(def.glow, 0.75);
@@ -570,7 +575,7 @@ function drawPourStream(ctx, anim, layoutArr) {
   if (!fromR || !toR) return;
 
   const t = Math.min(1, anim.t / anim.duration);
-  const def = COLORS[anim.color] || COLORS[0];
+  const def = (typeof colorOf === 'function') ? colorOf(anim.color) : (COLORS[anim.color] || COLORS[0]);
   const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
   const x0 = fromR.cx;
@@ -662,9 +667,37 @@ function drawWinOverlayFlash(ctx) {
 
 function drawColorFlash(ctx) {
   if (!flashColor || flashColor.life <= 0) return;
-  const def = COLORS[flashColor.colorId] || COLORS[0];
+  const def = (typeof colorOf === 'function')
+    ? colorOf(flashColor.colorId)
+    : (COLORS[flashColor.colorId] || COLORS[0]);
   const a = Math.min(0.28, (flashColor.life / flashColor.maxLife) * 0.28);
-  // parse glow to rgb-ish via canvas-friendly hex+alpha helper
   ctx.fillStyle = hexAlpha(def.glow, a);
   ctx.fillRect(0, 0, W, H);
+}
+
+/** Special-mode banner under the title chip (Shape Help / Neon Mix). */
+function drawModeBanner(ctx) {
+  if (!visualTitle) return;
+  const label = String(visualTitle);
+  ctx.save();
+  ctx.font = '800 12px system-ui,sans-serif';
+  const tw = ctx.measureText(label).width;
+  const bw = tw + 28;
+  const bx = (W - bw) / 2;
+  const by = 68;
+  ctx.fillStyle = visualModeId === 'shapes'
+    ? 'rgba(255, 215, 64, 0.2)'
+    : 'rgba(255, 79, 216, 0.18)';
+  ctx.strokeStyle = visualModeId === 'shapes'
+    ? 'rgba(255, 215, 64, 0.65)'
+    : 'rgba(255, 120, 220, 0.55)';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, bx, by, bw, 24, 12);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = visualModeId === 'shapes' ? '#ffe066' : '#ff9ad8';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, W / 2, by + 12);
+  ctx.restore();
 }

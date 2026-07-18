@@ -9,6 +9,8 @@ function defaultSave() {
     totalMoves: 0,
     totalUndos: 0,
     muted: false,
+    // Visual mode preference: auto | classic | shapes | neon
+    visualPref: 'auto',
   };
 }
 

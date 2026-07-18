@@ -223,6 +223,24 @@ document.getElementById('muteBtn').addEventListener('click', () => {
   sfxClick();
 });
 
+function syncModeChips() {
+  const pref = (save && save.visualPref) || 'auto';
+  document.querySelectorAll('.mode-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === pref);
+  });
+}
+
+document.getElementById('modeRow').addEventListener('click', e => {
+  const btn = e.target.closest('.mode-chip');
+  if (!btn) return;
+  const mode = btn.dataset.mode;
+  if (!VISUAL_PREFS.includes(mode)) return;
+  save.visualPref = mode;
+  persist();
+  syncModeChips();
+  sfxClick();
+});
+
 // ---------- version UI ----------
 function applyVersionLabels() {
   const label = GAME_NAME + ' ' + GAME_VERSION_LABEL;
@@ -302,6 +320,7 @@ function registerSW() {
 // boot
 applyVersionLabels();
 updateMenuStats();
+syncModeChips();
 setScreen('menu');
 registerSW();
 ({ ctx } = resizeCanvas(cv));

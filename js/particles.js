@@ -26,7 +26,9 @@ function randRange(a, b) {
 }
 
 function colorHex(colorId) {
-  const def = COLORS[colorId] || COLORS[0];
+  const def = (typeof colorOf === 'function')
+    ? colorOf(colorId)
+    : (COLORS[colorId] || COLORS[0]);
   return { color: def.color, glow: def.glow };
 }
 

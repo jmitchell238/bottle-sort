@@ -18,6 +18,20 @@ let screenShake = 0;        // seconds remaining
 let flashColor = null;      // { r,g,b,a life }
 let completePulse = {};     // bottleIndex → pulse time remaining
 
+// Visual mode for the active level
+let activePalette = PALETTE_BOLD;
+let showShapes = false;
+let visualModeId = 'classic';
+let visualTitle = null;
+let visualTagline = null;
+
+/** Resolve a color definition for the active palette. */
+function colorOf(id) {
+  const pal = activePalette || PALETTE_BOLD || COLORS;
+  const i = id | 0;
+  return pal[i] || pal[0] || PALETTE_BOLD[0];
+}
+
 function snapshotBoard() {
   return cloneBottles(bottles);
 }
@@ -31,8 +45,20 @@ function isFullMono(bottle, cap) {
   return bottle.length === cap && isBottleComplete(bottle, cap);
 }
 
+function applyVisualMode(lvl) {
+  const pref = (save && save.visualPref) || 'auto';
+  const mode = resolveVisualMode(lvl, pref);
+  activePalette = mode.palette || PALETTE_BOLD;
+  showShapes = !!mode.shapes;
+  visualModeId = mode.id || 'classic';
+  visualTitle = mode.title || null;
+  visualTagline = mode.tagline || null;
+  return mode;
+}
+
 function startLevel(lvl) {
   level = Math.max(1, lvl | 0);
+  applyVisualMode(level);
   const gen = generateLevel(level);
   bottles = gen.bottles;
   capacity = gen.capacity;
@@ -277,6 +303,7 @@ function updateMenuStats() {
   if (movesEl) movesEl.textContent = String(save.totalMoves);
   const muteBtn = document.getElementById('muteBtn');
   if (muteBtn) muteBtn.textContent = save.muted ? '🔇 Sound off' : '🔊 Sound on';
+  if (typeof syncModeChips === 'function') syncModeChips();
 }
 
 function updatePlayChrome() {
@@ -287,6 +314,16 @@ function updatePlayChrome() {
   if (mv) mv.textContent = String(moves);
   const undoBtn = document.getElementById('btnUndo');
   if (undoBtn) undoBtn.disabled = history.length === 0 || !!pourAnim;
+  const hint = document.getElementById('playHint');
+  if (hint) {
+    if (showShapes) {
+      hint.textContent = 'Shape Help · match colors (icons help too)';
+    } else if (visualModeId === 'neon') {
+      hint.textContent = 'Neon Mix · tap a bottle · pour';
+    } else {
+      hint.textContent = 'Tap a bottle · tap another to pour';
+    }
+  }
 }
 
 function stageFromClient(clientX, clientY, cvEl) {

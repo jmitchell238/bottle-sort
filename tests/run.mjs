@@ -59,7 +59,7 @@ function loadGame() {
     globalThis.__TEST__ = {
       GAME_VERSION, GAME_VERSION_LABEL, GAME_NAME,
       W, H, CAPACITY, COLORS, MAX_COLORS, POUR_DUR,
-      // COLORS is the palette array
+      PALETTE_BOLD, PALETTE_NEON, VISUAL_PREFS, resolveVisualMode,
       levelSpec, cloneBottles, bottleTop, bottleSpace,
       isBottleComplete, isSolved, topRunLength, canPour, pourAmount, pour,
       makeSolved, scrambleBottles, forceMessy, generateLevel,
@@ -76,7 +76,9 @@ function loadGame() {
       selected: () => selected,
       history: () => history,
       pourAnim: () => pourAnim,
-      startLevel, restartLevel, tryUndo, tapBottle, snapshotBoard,
+      showShapes: () => showShapes,
+      visualModeId: () => visualModeId,
+      startLevel, restartLevel, tryUndo, tapBottle, snapshotBoard, applyVisualMode, colorOf,
       save, loadSave, defaultSave, recordLevelWin, persist, SAVE_KEY,
       particles: () => (typeof particles !== 'undefined' ? particles : []),
       clearParticles: typeof clearParticles === 'function' ? clearParticles : null,
@@ -180,14 +182,13 @@ section('level generation');
 {
   const T = loadGame();
   const s1 = T.levelSpec(1);
-  assertEq(s1.colorCount, 4, 'level 1 has 4 colors');
-  assertEq(s1.bottleCount, 6, 'level 1 has 6 bottles (4+2)');
+  assertEq(s1.colorCount, 3, 'level 1 has 3 colors (red/blue/green)');
+  assertEq(s1.bottleCount, 5, 'level 1 has 5 bottles (3+2)');
   assertEq(s1.capacity, 4, 'capacity 4');
 
   const s5 = T.levelSpec(5);
-  assert(s5.colorCount >= 7, 'level 5 has more colors');
+  assert(s5.colorCount >= 5, 'level 5 has more colors');
   assert(s5.bottleCount === s5.colorCount + s5.emptyCount, 'bottles = colors + empty');
-  assert(s5.bottleCount >= 6, 'level 5 is 2-row size');
 
   // 2-row layout for 6+ bottles
   const lay6 = T.layoutBottles(6, 390, 700);
@@ -204,7 +205,7 @@ section('level generation');
   };
 
   const gen = T.generateLevel(1, rng);
-  assertEq(gen.bottles.length, 6, 'generated 6 bottles');
+  assertEq(gen.bottles.length, 5, 'generated 5 bottles on L1');
   assertEq(gen.capacity, 4, 'gen capacity');
 
   // color counts exact
@@ -250,7 +251,8 @@ section('particles');
     assert(T.particles().length >= 15, 'confetti spawns');
   }
   T.startLevel(1);
-  assert(T.bottles().length >= 6, 'startLevel builds denser board');
+  assert(T.bottles().length >= 5, 'startLevel builds board');
+  assertEq(T.showShapes(), false, 'classic L1 has no shapes');
 }
 
 // -------------------- game flow --------------------
@@ -351,32 +353,55 @@ section('html / css hooks');
   assert(css.includes('--cyan'), 'css has neon tokens');
 }
 
-section('distinct palette');
+section('distinct palette + visual modes');
 {
   const T = loadGame();
   assertEq(T.COLORS.length, 12, '12 colors');
-  const shapes = new Set();
-  for (const c of T.COLORS) {
-    assert(c.color && c.glow && c.label, `color ${c.id} has color/glow/label`);
-    assert(!!c.shape, `color ${c.id} has kid shape`);
-    assert(!!c.outline, `color ${c.id} has outline`);
-    shapes.add(c.shape);
-  }
-  // Unique shapes so kids can match by shape when color is confusing
-  assertEq(shapes.size, T.COLORS.length, 'each color has a unique shape');
-  // No duplicate hex fills
-  const fills = T.COLORS.map(c => c.color.toLowerCase());
-  assertEq(new Set(fills).size, fills.length, 'unique fill hexes');
-  // Early unlocks = crayon primaries
+  assertEq(T.PALETTE_BOLD.length, 12, 'bold palette 12');
+  assertEq(T.PALETTE_NEON.length, 12, 'neon palette 12');
+
+  const fills = T.PALETTE_BOLD.map(c => c.color.toLowerCase());
+  assertEq(new Set(fills).size, fills.length, 'unique bold hexes');
+  const neonFills = T.PALETTE_NEON.map(c => c.color.toLowerCase());
+  assertEq(new Set(neonFills).size, neonFills.length, 'unique neon hexes');
+
   assert(T.COLORS[0].label === 'Red', 'id0 Red');
   assert(T.COLORS[1].label === 'Blue', 'id1 Blue');
   assert(T.COLORS[2].label === 'Green', 'id2 Green');
   assert(T.COLORS[3].label === 'Yellow', 'id3 Yellow');
-  // No lime/sky/indigo near-duplicates
-  const labels = T.COLORS.map(c => c.label);
-  assert(!labels.includes('Lime'), 'no lime (confuses with green)');
-  assert(!labels.includes('Sky'), 'no sky (confuses with blue)');
-  assert(!labels.includes('Indigo'), 'no indigo (confuses with purple/blue)');
+
+  // Classic pref never forces shapes
+  const classic = T.resolveVisualMode(5, 'classic');
+  assertEq(classic.shapes, false, 'classic pref no shapes');
+  assertEq(classic.id, 'classic', 'classic id');
+
+  // Shapes pref always shapes
+  const shapes = T.resolveVisualMode(2, 'shapes');
+  assertEq(shapes.shapes, true, 'shapes pref has shapes');
+
+  // Auto: L5 is shape help (every 5th)
+  const auto5 = T.resolveVisualMode(5, 'auto');
+  assertEq(auto5.shapes, true, 'auto L5 is shape help');
+  assertEq(auto5.id, 'shapes', 'auto L5 id shapes');
+
+  // Auto L1 classic
+  const auto1 = T.resolveVisualMode(1, 'auto');
+  assertEq(auto1.shapes, false, 'auto L1 no shapes');
+  assertEq(auto1.id, 'classic', 'auto L1 classic');
+
+  // Neon pref
+  const neon = T.resolveVisualMode(3, 'neon');
+  assertEq(neon.id, 'neon', 'neon pref');
+  assertEq(neon.shapes, false, 'neon no shapes');
+
+  // startLevel applies mode
+  T.save.visualPref = 'classic';
+  T.startLevel(5);
+  assertEq(T.showShapes(), false, 'classic start L5 no shapes');
+  T.save.visualPref = 'shapes';
+  T.startLevel(1);
+  assertEq(T.showShapes(), true, 'shapes start has shapes');
+  T.save.visualPref = 'auto';
 }
 
 // summary

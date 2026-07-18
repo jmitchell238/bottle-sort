@@ -152,6 +152,46 @@ html, body {
   font-weight: 600;
 }
 
+.mode-label {
+  margin: 2px 0 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mode-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.mode-chip {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.mode-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.mode-chip.active {
+  color: #061018;
+  background: linear-gradient(180deg, #9af7ff, var(--cyan));
+  border-color: transparent;
+  box-shadow: 0 2px 0 #1a8ea0;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

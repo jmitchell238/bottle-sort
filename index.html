@@ -35,6 +35,15 @@
 
         <button id="btnPlay" class="primary">▶  Continue</button>
         <button id="btnPlayFromStart" class="secondary">Play from level 1</button>
+
+        <p class="mode-label">Color mode</p>
+        <div class="mode-row" id="modeRow" role="group" aria-label="Color mode">
+          <button type="button" class="mode-chip" data-mode="auto" title="Classic most levels; special Shape/Neon levels appear">Auto</button>
+          <button type="button" class="mode-chip" data-mode="classic" title="Bold solid colors only">Classic</button>
+          <button type="button" class="mode-chip" data-mode="shapes" title="Always show shape icons">Shapes</button>
+          <button type="button" class="mode-chip" data-mode="neon" title="Glow neon palette">Neon</button>
+        </div>
+
         <button id="btnHow" class="secondary">How to play</button>
         <button id="muteBtn" class="ghost">🔊 Sound on</button>
 
@@ -43,7 +52,8 @@
             <li>Tap a <b>bottle</b> to pick it up, then tap another to <b>pour</b>.</li>
             <li>You can only pour onto the <b>same color</b> (or into an empty bottle).</li>
             <li>Whole top runs pour at once — fill each bottle with one solid color.</li>
-            <li>Empty bottles are your helpers. Levels randomize bottle &amp; color counts.</li>
+            <li><b>Classic</b> uses bold crayon colors. <b>Shapes</b> adds icons (great for help).</li>
+            <li><b>Auto</b> is classic most of the time, with occasional Shape Help / Neon Mix specials.</li>
             <li>Keys: 1–9 select, Z undo, R restart, Esc menu.</li>
           </ol>
         </div>

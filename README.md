@@ -20,7 +20,11 @@ Neon water-sort puzzle — pour glowing liquids until every bottle is a solid co
 - Pour only onto the **same top color**, or into an **empty** bottle.
 - Whole top runs of a color pour at once (as much as fits).
 - Win when every bottle is empty or filled with one solid color.
-- **Levels scale fast** — more colors and bottles early (2-row boards from level 1).
+- **Color modes** (menu): Auto · Classic · Shapes · Neon  
+  - Classic = bold crayon solids (default everyday look)  
+  - Shapes = icons for helper play  
+  - Neon = glow palette variety  
+  - Auto = classic most levels; occasional Shape Help / Neon Mix specials  
 - **FX** — pour sparks, splash, bottle-complete rings, screen shake, win confetti.
 
 ## Stack
