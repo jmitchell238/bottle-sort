@@ -1,44 +1,44 @@
 # Bottle Sort
 
-Neon water-sort puzzle — pour glowing liquids until every bottle is a solid color.
+A neon water-sort puzzle. Pour liquids between bottles until each one holds a single color.
 
-**Play:** https://jmitchell238.github.io/bottle-sort/
+Play at https://jmitchell238.github.io/bottle-sort/
 
 ## Controls
 
 | Input | Action |
 |-------|--------|
-| Tap bottle → tap another | Select & pour |
+| Tap a bottle, then another | Pour from the first into the second |
+| 1–9 | Select a bottle by position |
 | ↩ / Z / U | Undo |
-| ↻ / R | Restart level |
+| ↻ / R | Restart the level |
 | Esc | Menu |
-| 1–9 | Select bottle by index |
 
 ## Rules
 
-- Bottles hold **4** units of liquid.
-- Pour only onto the **same top color**, or into an **empty** bottle.
-- Whole top runs of a color pour at once (as much as fits).
-- Win when every bottle is empty or filled with one solid color.
-- **Color modes** (menu): Auto · Classic · Shapes · Neon  
-  - Classic = bold crayon solids (default everyday look)  
-  - Shapes = icons for helper play  
-  - Neon = glow palette variety  
-  - Auto = classic most levels; occasional Shape Help / Neon Mix specials  
-- **FX** — pour sparks, splash, bottle-complete rings, screen shake, win confetti.
+- Each bottle holds 4 units.
+- You can only pour onto the same color, or into an empty bottle.
+- The whole run of the top color pours at once, as much as fits.
+- You win when every bottle is either empty or a single solid color.
 
-## Stack
+## Color modes
 
-Static HTML/CSS/Canvas. Installable PWA (`manifest` + service worker). Progress in `localStorage`.
+Pick one from the menu:
 
-## Versioning
+- Auto (the default): Classic on most levels, with the occasional Shape Help or Neon Mix level
+- Classic: solid crayon colors
+- Shapes: each color also has an icon, which helps younger players
+- Neon: a glowing palette
 
-Same scheme as Drop & Fuse / VoidRush:
+## Running locally
 
-- `GAME_VERSION` in `js/config.js` — `MAJOR.MINOR.PATCH` (patch zero-padded to 3 digits)
-- UI shows `Bottle Sort v…` (corner tag + menu / win lines)
-- Keep `CACHE` in `sw.js` in sync: `'bottle-sort-' + GAME_VERSION`
-- SW + remote `config.js` version check auto-reload when not mid-game
+```bash
+python3 -m http.server 8080
+```
+
+Then open http://localhost:8080.
+
+Plain HTML, CSS and canvas. Installable as a PWA, and progress is saved in localStorage.
 
 ## Tests
 
@@ -46,8 +46,8 @@ Same scheme as Drop & Fuse / VoidRush:
 node tests/run.mjs
 ```
 
-## Local
+## Versioning
 
-```bash
-python3 -m http.server 8080
-```
+`GAME_VERSION` in `js/config.js` is `MAJOR.MINOR.PATCH` with a three-digit patch. When you bump it, set `CACHE` in `sw.js` to `'bottle-sort-' + GAME_VERSION`.
+
+The version shows in the corner, on the menu and on the win screen. Installed copies check the live `js/config.js` for a newer version and reload, but not in the middle of a level.
