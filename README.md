@@ -4,6 +4,8 @@ A neon water-sort puzzle. Pour liquids between bottles until each one holds a si
 
 Play at https://jmitchell238.github.io/bottle-sort/
 
+You can install it as an app from the browser (Add to Home Screen on iPhone and iPad).
+
 ## Controls
 
 | Input | Action |
@@ -30,24 +32,6 @@ Pick one from the menu:
 - Shapes: each color also has an icon, which helps younger players
 - Neon: a glowing palette
 
-## Running locally
+## Development
 
-```bash
-python3 -m http.server 8080
-```
-
-Then open http://localhost:8080.
-
-Plain HTML, CSS and canvas. Installable as a PWA, and progress is saved in localStorage.
-
-## Tests
-
-```bash
-node tests/run.mjs
-```
-
-## Versioning
-
-`GAME_VERSION` in `js/config.js` is `MAJOR.MINOR.PATCH` with a three-digit patch. When you bump it, set `CACHE` in `sw.js` to `'bottle-sort-' + GAME_VERSION`.
-
-The version shows in the corner, on the menu and on the win screen. Installed copies check the live `js/config.js` for a newer version and reload, but not in the middle of a level.
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for running it locally, tests and versioning, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code is organized.
